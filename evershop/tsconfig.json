@@ -1,0 +1,10 @@
+{
+    "compilerOptions": {
+        "target": "ES2015",
+        "lib": ["ES2015", "DOM"],
+        "module": "ES6",
+        "moduleResolution": "node",
+        "strict": true
+    },
+    "include": ["./src/evershop.ts"]
+}

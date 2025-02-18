@@ -1,0 +1,20 @@
+{
+    "manifest_version": 3,
+    "name": "APA",
+    "version": "1.0",
+    "description": "",
+    "permissions": ["activeTab"],
+    "action": {
+        "default_popup": "popup.html"
+    },
+    "background": {
+        "scripts": ["background.js"],
+        "type": "module"
+    },
+    "content_scripts": [
+        {
+            "matches": ["<all_urls>"],
+            "js": ["content.js"]
+        }
+    ]
+}
