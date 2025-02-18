@@ -21,6 +21,7 @@ interface ProductRequest {
     group_id: string | number;
     visibility: 0 | 1;
     images: string[];
+    options: any[];
 }
 
 interface ProductResponse {
@@ -59,6 +60,30 @@ interface ProductResponse {
     };
 }
 
+interface Variant {
+    Product: string;
+    Sku: string;
+    Color: string;
+    "Product Cost": string;
+    "Shipping Cost": string;
+    Tax: string;
+    "Total Cost": string;
+    "Profit Margin": string;
+    Price: string;
+    "Compare At Price": string;
+    "Stock on AliExpress": number;
+}
+
+interface ProductData {
+    token: string;
+    title: string;
+    weight: string;
+    length: string;
+    width: string;
+    height: string;
+    variants: Variant[];
+}
+
 export async function login(): Promise<string | null> {
     const email = "admin@admin.com";
     const password = "modimodi";
@@ -90,23 +115,49 @@ export async function login(): Promise<string | null> {
     }
 }
 
-export async function createProduct(
-    product: ProductRequest
+export async function createProductFromData(
+    productData: ProductData
 ): Promise<ProductResponse | null> {
     try {
-        const sid = await login();
-
-        if (!sid) {
-            throw new Error("Login failed");
-        }
+        const productRequest: ProductRequest = {
+            name: productData.title,
+            description: productData.title, // No description provided in ProductData
+            short_description: productData.title, // No short description provided
+            url_key: productData.title.replace(/\s+/g, "-").toLowerCase(), // Generate URL key
+            meta_title: productData.title,
+            meta_description: productData.title, // No meta description provided
+            status: 1, // Assuming product is active
+            sku: productData.variants[0]?.Sku || "", // Use the first variant's SKU
+            price: productData.variants[0]?.Price || 0, // Use first variant price
+            weight: productData.weight,
+            qty: productData.variants
+                .map((variant) => Number(variant["Stock on AliExpress"]) || 0)
+                .reduce((acc, stock) => acc + stock, 0),
+            group_id: 1, // Default group ID (adjust as needed)
+            visibility: 1, // Assuming visible
+            images: productData.variants.map((variant) => variant.Product), // Extract images from variants
+            options: [
+                {
+                    option_name: "Color",
+                    option_type: "select",
+                    values: [
+                        {
+                            value: productData.variants[0].Color,
+                            extra_price: productData.variants[0]?.Price,
+                        },
+                    ],
+                },
+            ],
+        };
 
         const response = await fetch(`https://${domain}/api/products`, {
             method: "POST",
             headers: {
                 Accept: "application/json",
-                Cookie: `asid=${sid}`,
+                "Content-Type": "application/json",
+                Cookie: `asid=${productData.token}`,
             },
-            body: JSON.stringify(product),
+            body: JSON.stringify(productRequest),
         });
 
         if (!response.ok) {

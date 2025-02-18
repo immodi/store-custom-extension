@@ -1,4 +1,4 @@
-import { login } from "./evershop/evershop.js";
+import { createProductFromData, login } from "./evershop/evershop.js";
 
 // Event listener for handling messages
 browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -45,6 +45,38 @@ browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 console.error("Error:", error);
                 sendResponse({ success: false, error: error.message });
             });
+    }
+
+    if (request.action === "createProduct") {
+        const { product } = request; // Extract product from request
+
+        if (!product) {
+            sendResponse({ success: false, error: "No product data provided" });
+            return true;
+        }
+
+        createProductFromData(product) // Pass the product data
+            .then((productData) => {
+                if (productData !== null) {
+                    sendResponse({
+                        success: true,
+                        data: {
+                            product: productData,
+                        },
+                    });
+                } else {
+                    sendResponse({
+                        success: false,
+                        error: "Product creation failed",
+                    });
+                }
+            })
+            .catch((error) => {
+                console.error("Error during product creation:", error);
+                sendResponse({ success: false, error: error.message });
+            });
+
+        return true; // Ensure the response is sent asynchronously
     }
 
     return true;

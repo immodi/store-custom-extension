@@ -42,7 +42,7 @@ async function grabVariantData() {
     document.querySelector("#rc-tabs-0-tab-Variants").click();
 
     return new Promise((resolve, reject) => {
-        const checkInterval = 500; // Check every 500ms
+        const checkInterval = 1000; // Check every 500ms
         const timeout = 50000; // 10-second timeout
         let elapsed = 0;
 
@@ -104,6 +104,7 @@ function extractTableData(table) {
         data.push(rowData);
     }
 
+    localStorage.setItem("productData", JSON.stringify(data));
     return data;
 }
 
