@@ -3,15 +3,20 @@ document.getElementById("clickButton").addEventListener("click", async () => {
 
     try {
         const token = await getAdminToken();
-        const productData = await getProductData();
+        // const productData = await getProductData();
+        // const data = {
+        //     token: token,
+        //     ...productData,
+        // };
+        // localStorage.setItem("productData", JSON.stringify(data));
+        // const creationRequest = await createProduct(data);
 
-        const data = {
-            token: token,
-            ...productData,
-        };
+        const attributeUid = await createAttribute(token, "Test2", "test2", [
+            { option_text: "test2-1" },
+            { option_text: "test2-2" },
+        ]);
 
-        localStorage.setItem("productData", JSON.stringify(data));
-        const creationRequest = await createProduct(data);
+        console.log(attributeUid);
     } catch (error) {
         console.log(error);
     } finally {
@@ -60,6 +65,28 @@ async function createProduct(product) {
     if (creationRequest && creationRequest.success) {
         const product = creationRequest.product;
         return product;
+    } else {
+        return null;
+    }
+}
+
+async function createAttribute(
+    authCookie,
+    attributeName,
+    attributeCode,
+    options
+) {
+    const creationRequest = await browser.runtime.sendMessage({
+        action: "createAttribute",
+        authCookie: authCookie,
+        attributeName: attributeName,
+        attributeCode: attributeCode,
+        options: options,
+    });
+
+    if (creationRequest && creationRequest.success) {
+        const uuid = creationRequest.data.attributeUid;
+        return uuid;
     } else {
         return null;
     }

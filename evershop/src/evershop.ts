@@ -1,5 +1,30 @@
 const domain = "sahlstor.com";
 
+interface Variant {
+    Product: string;
+    Sku: string;
+    Color: string;
+    ProductCost: string;
+    ShippingCost: string;
+    Tax: string;
+    TotalCost: string;
+    ProfitMargin: string;
+    Price: string;
+    CompareAtPrice: string;
+    StockonAliExpress: string;
+}
+
+interface ProductData {
+    token: string;
+    title: string;
+    weight: string;
+    length: string;
+    width: string;
+    height: string;
+    description: string;
+    variants: Variant[];
+}
+
 interface UserResponse {
     data: {
         sid: string;
@@ -21,7 +46,6 @@ interface ProductRequest {
     group_id: string | number;
     visibility: 0 | 1;
     images: string[];
-    options: any[];
 }
 
 interface ProductResponse {
@@ -60,28 +84,24 @@ interface ProductResponse {
     };
 }
 
-interface Variant {
-    Product: string;
-    Sku: string;
-    Color: string;
-    "Product Cost": string;
-    "Shipping Cost": string;
-    Tax: string;
-    "Total Cost": string;
-    "Profit Margin": string;
-    Price: string;
-    "Compare At Price": string;
-    "Stock on AliExpress": number;
-}
-
-interface ProductData {
-    token: string;
-    title: string;
-    weight: string;
-    length: string;
-    width: string;
-    height: string;
-    variants: Variant[];
+interface AttributeResponse {
+    data: {
+        attribute_id: number;
+        uuid: string;
+        attribute_code: string;
+        attribute_name: string;
+        type: string;
+        is_required: number;
+        display_on_frontend: number;
+        sort_order: number;
+        is_filterable: number;
+        links: {
+            rel: string;
+            href: string;
+            action: string;
+            types: string[];
+        }[];
+    };
 }
 
 export async function login(): Promise<string | null> {
@@ -121,33 +141,21 @@ export async function createProductFromData(
     try {
         const productRequest: ProductRequest = {
             name: productData.title,
-            description: productData.title, // No description provided in ProductData
-            short_description: productData.title, // No short description provided
+            description: productData.description, // No description provided in ProductData
+            short_description: productData.description, // No short description provided
             url_key: productData.title.replace(/\s+/g, "-").toLowerCase(), // Generate URL key
             meta_title: productData.title,
-            meta_description: productData.title, // No meta description provided
+            meta_description: productData.title,
             status: 1, // Assuming product is active
             sku: productData.variants[0]?.Sku || "", // Use the first variant's SKU
             price: productData.variants[0]?.Price || 0, // Use first variant price
             weight: productData.weight,
             qty: productData.variants
-                .map((variant) => Number(variant["Stock on AliExpress"]) || 0)
+                .map((variant) => Number(variant.StockonAliExpress) || 0)
                 .reduce((acc, stock) => acc + stock, 0),
-            group_id: 1, // Default group ID (adjust as needed)
+            group_id: (Math.random() * 10000).toFixed(0),
             visibility: 1, // Assuming visible
             images: productData.variants.map((variant) => variant.Product), // Extract images from variants
-            options: [
-                {
-                    option_name: "Color",
-                    option_type: "select",
-                    values: [
-                        {
-                            value: productData.variants[0].Color,
-                            extra_price: productData.variants[0]?.Price,
-                        },
-                    ],
-                },
-            ],
         };
 
         const response = await fetch(`https://${domain}/api/products`, {
@@ -168,6 +176,50 @@ export async function createProductFromData(
         return data;
     } catch (error) {
         console.error("Error creating product:", error);
+        return null;
+    }
+}
+
+export async function createAttribute(
+    authCookie: string,
+    attributeName: string,
+    attributeCode: string,
+    options: { option_text: string }[]
+): Promise<string | null> {
+    const url = `https://${domain}/api/attributes`;
+    const headers = {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        Cookie: `asid=${authCookie}`,
+    };
+    const body = {
+        attribute_name: attributeName,
+        attribute_code: attributeCode,
+        is_required: "0",
+        display_on_frontend: "1",
+        is_filterable: "1",
+        sort_order: "0",
+        type: "select",
+        groups: ["1"],
+        options: options,
+    };
+
+    try {
+        const response = await fetch(url, {
+            method: "POST",
+            headers: headers,
+            body: JSON.stringify(body),
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+
+        const data: AttributeResponse = await response.json();
+
+        return data.data.uuid;
+    } catch (error) {
+        console.error("Error:", error);
         return null;
     }
 }

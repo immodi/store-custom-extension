@@ -40,37 +40,25 @@ export function login() {
 }
 export function createProductFromData(productData) {
     return __awaiter(this, void 0, void 0, function* () {
-        var _a, _b, _c;
+        var _a, _b;
         try {
             const productRequest = {
                 name: productData.title,
-                description: productData.title, // No description provided in ProductData
-                short_description: productData.title, // No short description provided
+                description: productData.description, // No description provided in ProductData
+                short_description: productData.description, // No short description provided
                 url_key: productData.title.replace(/\s+/g, "-").toLowerCase(), // Generate URL key
                 meta_title: productData.title,
-                meta_description: productData.title, // No meta description provided
+                meta_description: productData.title,
                 status: 1, // Assuming product is active
                 sku: ((_a = productData.variants[0]) === null || _a === void 0 ? void 0 : _a.Sku) || "", // Use the first variant's SKU
                 price: ((_b = productData.variants[0]) === null || _b === void 0 ? void 0 : _b.Price) || 0, // Use first variant price
                 weight: productData.weight,
                 qty: productData.variants
-                    .map((variant) => Number(variant["Stock on AliExpress"]) || 0)
+                    .map((variant) => Number(variant.StockonAliExpress) || 0)
                     .reduce((acc, stock) => acc + stock, 0),
-                group_id: 1, // Default group ID (adjust as needed)
+                group_id: (Math.random() * 10000).toFixed(0),
                 visibility: 1, // Assuming visible
                 images: productData.variants.map((variant) => variant.Product), // Extract images from variants
-                options: [
-                    {
-                        option_name: "Color",
-                        option_type: "select",
-                        values: [
-                            {
-                                value: productData.variants[0].Color,
-                                extra_price: (_c = productData.variants[0]) === null || _c === void 0 ? void 0 : _c.Price,
-                            },
-                        ],
-                    },
-                ],
             };
             const response = yield fetch(`https://${domain}/api/products`, {
                 method: "POST",
@@ -89,6 +77,43 @@ export function createProductFromData(productData) {
         }
         catch (error) {
             console.error("Error creating product:", error);
+            return null;
+        }
+    });
+}
+export function createAttribute(authCookie, attributeName, attributeCode, options) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const url = `https://${domain}/api/attributes`;
+        const headers = {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+            Cookie: `asid=${authCookie}`,
+        };
+        const body = {
+            attribute_name: attributeName,
+            attribute_code: attributeCode,
+            is_required: "0",
+            display_on_frontend: "1",
+            is_filterable: "1",
+            sort_order: "0",
+            type: "select",
+            groups: ["1"],
+            options: options,
+        };
+        try {
+            const response = yield fetch(url, {
+                method: "POST",
+                headers: headers,
+                body: JSON.stringify(body),
+            });
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            const data = yield response.json();
+            return data.data.uuid;
+        }
+        catch (error) {
+            console.error("Error:", error);
             return null;
         }
     });

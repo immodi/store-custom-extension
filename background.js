@@ -1,4 +1,8 @@
-import { createProductFromData, login } from "./evershop/evershop.js";
+import {
+    createAttribute,
+    createProductFromData,
+    login,
+} from "./evershop/evershop.js";
 
 // Event listener for handling messages
 browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -73,6 +77,38 @@ browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
             })
             .catch((error) => {
                 console.error("Error during product creation:", error);
+                sendResponse({ success: false, error: error.message });
+            });
+
+        return true; // Ensure the response is sent asynchronously
+    }
+
+    if (request.action === "createAttribute") {
+        const { authCookie, attributeName, attributeCode, options } = request; // Extract product from request
+
+        if (!authCookie && !attributeName && !attributeCode && !options) {
+            sendResponse({ success: false, error: "No data provided" });
+            return true;
+        }
+
+        createAttribute(authCookie, attributeName, attributeCode, options)
+            .then((attributeUid) => {
+                if (attributeUid !== null) {
+                    sendResponse({
+                        success: true,
+                        data: {
+                            attributeUid: attributeUid,
+                        },
+                    });
+                } else {
+                    sendResponse({
+                        success: false,
+                        error: "Attribute creation failed",
+                    });
+                }
+            })
+            .catch((error) => {
+                console.error("Error during attribute creation:", error);
                 sendResponse({ success: false, error: error.message });
             });
 

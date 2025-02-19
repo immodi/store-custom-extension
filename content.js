@@ -21,6 +21,7 @@ async function grabGeneralData() {
     const packageHeight = document.querySelector("#package_height");
 
     const variantData = await grabVariantData();
+    const description = await grabDescriptionData();
 
     return {
         title: productTitle.textContent ?? productTitle.innerText,
@@ -28,6 +29,7 @@ async function grabGeneralData() {
         length: packageLength.value ?? "?",
         width: packageWidth.value ?? "?",
         height: packageHeight.value ?? "?",
+        description: description,
         variants: variantData,
     };
 }
@@ -73,6 +75,39 @@ async function grabVariantData() {
 }
 
 /**
+ * @returns {Promise<string>}
+ */
+async function grabDescriptionData() {
+    // Click the variants tab to trigger potential loading
+    document.querySelector("#rc-tabs-0-tab-Description").click();
+
+    return new Promise((resolve, reject) => {
+        const checkInterval = 1000; // Check every 500ms
+        const timeout = 50000; // 10-second timeout
+        let elapsed = 0;
+
+        const checkIntervalId = setInterval(() => {
+            // Check if loading spinner exists
+            const loadingSpinner = document.querySelector(".ant-spin-spinning");
+            const iFrame = document.querySelectorAll("iframe")[1];
+
+            if (!loadingSpinner && iFrame) {
+                clearInterval(checkIntervalId);
+
+                resolve(extractDescription(iFrame));
+            }
+
+            // Handle timeout
+            elapsed += checkInterval;
+            if (elapsed >= timeout) {
+                clearInterval(checkIntervalId);
+                reject(new Error("Timeout waiting for data to load"));
+            }
+        }, checkInterval);
+    });
+}
+
+/**
  * Grabs data from an HTML table and returns it as an array of objects.
  * Each object represents a row, with keys as column headers and values as cell content.
  * @returns {object[]} An array of objects representing the table data.
@@ -83,6 +118,8 @@ function extractTableData(table) {
         console.error("Table not found!");
         return [];
     }
+
+    zoomOut(0.5);
 
     const rows = table.querySelectorAll("tr");
     const headers = Array.from(rows[0].querySelectorAll("th")).map((header) =>
@@ -98,14 +135,35 @@ function extractTableData(table) {
 
         cells.forEach((cell, index) => {
             const header = headers[index];
-            rowData[header] = cell.textContent.trim();
+            rowData[header.replaceAll(" ", "")] = cell.textContent.trim();
         });
 
         data.push(rowData);
     }
 
-    localStorage.setItem("productData", JSON.stringify(data));
+    zoomOut(1);
     return data;
+}
+
+/**
+ * @returns {string} An array of objects representing the table data.
+ * @param {HTMLIFrameElement} IFrameElement
+ */
+function extractDescription(IFrameElement) {
+    if (IFrameElement) {
+        const textContent =
+            IFrameElement.contentDocument.querySelector("body").innerText;
+
+        return textContent;
+    }
+
+    return "";
+}
+
+function zoomOut(scaleFactor = 0.6) {
+    document.body.style.transform = `scale(${scaleFactor})`;
+    document.body.style.transformOrigin = "0 0"; // Ensures scaling from the top-left
+    document.body.style.width = `${100 / scaleFactor}%`; // Adjust width to prevent clipping
 }
 
 browser.runtime.onMessage.addListener((request, sender) => {
