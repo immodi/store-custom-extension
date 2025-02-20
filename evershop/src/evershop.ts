@@ -14,7 +14,7 @@ interface Variant {
     StockonAliExpress: string;
 }
 
-interface ProductData {
+interface ReturnedProductData {
     token: string;
     title: string;
     weight: string;
@@ -22,7 +22,17 @@ interface ProductData {
     width: string;
     height: string;
     description: string;
+    images: string[];
     variants: Variant[];
+}
+
+interface RequestProductData extends ReturnedProductData {
+    sku: string;
+    price: number;
+    qty: number;
+    attr_code: string;
+    attr_value: string;
+    visibility: 0 | 1;
 }
 
 interface UserResponse {
@@ -47,6 +57,16 @@ interface ProductRequest {
     visibility: 0 | 1;
     images: string[];
     attributes: any[];
+}
+
+interface UploadImageResponse {
+    data: {
+        files: {
+            name: string;
+            size: number;
+            url: string;
+        }[];
+    };
 }
 
 interface ProductResponse {
@@ -179,29 +199,46 @@ export async function login(): Promise<string | null> {
 }
 
 export async function createProductFromData(
-    productData: ProductData
+    productData: RequestProductData
 ): Promise<ProductResponse | null> {
     try {
         const productRequest: ProductRequest = {
             name: productData.title,
             description: productData.description, // No description provided in ProductData
             short_description: productData.description, // No short description provided
-            url_key: productData.title.replace(/\s+/g, "-").toLowerCase(), // Generate URL key
+            url_key: `${productData.title}-${(Math.random() * 1000).toFixed(0)}`
+                .replace(/\s+/g, "-")
+                .toLowerCase(), // Generate URL key
             meta_title: productData.title,
             meta_description: productData.title,
             status: 1, // Assuming product is active
-            sku: productData.variants[0]?.Sku || "", // Use the first variant's SKU
-            price: productData.variants[0]?.Price || 0, // Use first variant price
+            // sku: productData.variants[0]?.Sku ?? "", // Use the first variant's SKU
+            sku: productData.sku ?? "", // Use the first variant's SKU
+            // price: productData.variants[0]?.Price ?? 0, // Use first variant price
+            price: productData.price ?? 0, // Use first variant price
             weight: productData.weight,
-            qty: productData.variants
-                .map((variant) => Number(variant.StockonAliExpress) || 0)
-                .reduce((acc, stock) => acc + stock, 0),
+            // qty: productData.variants
+            //     .map((variant) => Number(variant.StockonAliExpress) || 0)
+            //     .reduce((acc, stock) => acc + stock, 0),
+            qty: productData.qty,
             group_id: 1,
-            visibility: 1, // Assuming visible
-            images: productData.variants.map((variant) => variant.Product), // Extract images from variants
+            visibility: productData.visibility,
+            images: await Promise.all(
+                productData.images.map(async (imgUrl) => {
+                    const image = await uploadImage(
+                        imgUrl,
+                        imgUrl.split("/")[4],
+                        productData.token
+                    );
+
+                    return image?.data.files[0].url ?? imgUrl;
+                })
+            ),
             attributes: [
-                { attribute_code: "color" },
-                { attribute_code: "size" },
+                {
+                    attribute_code: productData.attr_code,
+                    value: productData.attr_value,
+                },
             ],
         };
 
@@ -347,5 +384,47 @@ export async function addProductToVariantGroup(
     } catch (error) {
         console.error("Error adding product to variant group:", error);
         return false;
+    }
+}
+
+export async function uploadImage(
+    imageUrl: string,
+    imageName: string,
+    cookie: string
+): Promise<UploadImageResponse | null> {
+    // Generate random 4-digit numbers
+    const randomNum1 = Math.floor(1000 + Math.random() * 9000);
+    const randomNum2 = Math.floor(1000 + Math.random() * 9000);
+
+    // Construct the upload URL
+    const uploadUrl = `https://${domain}/api/images/catalog/${randomNum1}/${randomNum2}`;
+
+    try {
+        // Fetch the image as a Blob
+        const imageResponse = await fetch(imageUrl);
+        if (!imageResponse.ok) throw new Error("Failed to download image.");
+        const imageBlob = await imageResponse.blob();
+
+        // Create form data
+        const formData = new FormData();
+        formData.append("images", imageBlob, imageName);
+        formData.append("targetPath", `catalog/${randomNum1}/${randomNum2}`);
+
+        // Send the POST request
+        const response = await fetch(uploadUrl, {
+            method: "POST",
+            headers: {
+                Accept: "*/*",
+                "X-Requested-With": "XMLHttpRequest",
+                Cookie: `asid=${cookie}`,
+            },
+            body: formData,
+        });
+
+        if (!response.ok) throw new Error("Image upload failed.");
+        return await response.json();
+    } catch (error) {
+        console.error("Error:", error);
+        return null;
     }
 }

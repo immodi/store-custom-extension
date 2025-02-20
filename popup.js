@@ -19,15 +19,12 @@ document.getElementById("clickButton").addEventListener("click", async () => {
             productData.variants.map((variant) => variant.Color)
         );
 
-        const productResponse = await createProduct(data);
-        const variantGroupId = await createVariantGroup(attributeCode, token);
-        const wasProductAdded = await addProductToVariantGroup(
-            variantGroupId,
-            token,
-            productResponse.data.uuid
-        );
+        const variantsUids = await createVariants(attributeCode, data);
 
-        console.log("is it done?", wasProductAdded);
+        const variantGroupId = await createVariantGroup(attributeCode, token);
+        variantsUids.forEach(async (variantsUid) => {
+            await addProductToVariantGroup(variantGroupId, token, variantsUid);
+        });
     } catch (error) {
         console.error(error);
     } finally {
@@ -79,6 +76,35 @@ async function createProduct(product) {
     } else {
         return null;
     }
+}
+
+/**
+ * @param {object} productObject
+ * @returns {Promise<string[]>}
+ */
+async function createVariants(attributeCode, productObject) {
+    const variants = productObject.variants.map((variant, index) => {
+        return {
+            ...productObject,
+            sku: variant.Sku ?? "",
+            price: variant.TotalCost ?? 0,
+            qty: variant.StockonAliExpress ?? 0,
+            attr_code: attributeCode,
+            attr_value: (index + 73).toString(),
+            visibility: index === 0 ? "1" : "0",
+        };
+    });
+
+    const variantsUids = await Promise.all(
+        variants.map(async (variant) => {
+            const variantObject = await createProduct(variant);
+            return variantObject.data.uuid;
+        })
+    );
+
+    console.log(JSON.stringify(variantsUids));
+
+    return variantsUids;
 }
 
 /**

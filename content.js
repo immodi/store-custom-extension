@@ -1,9 +1,3 @@
-async function clickButton() {
-    const product = await grabGeneralData();
-
-    return product;
-}
-
 /**
  * Grabs product data from the DOM and returns it as an object.
  * @returns {object} Product object containing product details.
@@ -20,8 +14,50 @@ async function grabGeneralData() {
     const packageWidth = document.querySelector("#package_width");
     const packageHeight = document.querySelector("#package_height");
 
-    const variantData = await grabVariantData();
-    const description = await grabDescriptionData();
+    const variantData = await awaitLoadAndGrab(
+        document.querySelector(".ant-tabs-nav-list").childNodes[1],
+        () => {
+            const loadingSpinner = document.querySelector(".ant-spin-spinning");
+            const table = document.querySelector("table");
+
+            if (!loadingSpinner && table) {
+                return table;
+            }
+
+            return null;
+        },
+        extractTableData
+    );
+    const description = await awaitLoadAndGrab(
+        document.querySelector(".ant-tabs-nav-list").childNodes[2],
+        () => {
+            const loadingSpinner = document.querySelector(".ant-spin-spinning");
+            const iFrame = document.querySelectorAll("iframe")[1];
+
+            if (!loadingSpinner && iFrame) {
+                return iFrame;
+            }
+
+            return null;
+        },
+        extractDescription
+    );
+    const imagesArray = await awaitLoadAndGrab(
+        document.querySelector(".ant-tabs-nav-list").childNodes[3],
+        () => {
+            const loadingSpinner = document.querySelector(".ant-spin-spinning");
+            const imagesContainer = document.querySelector(
+                ".index_imgAllContainer__YIEBT"
+            );
+
+            if (!loadingSpinner && imagesContainer) {
+                return imagesContainer;
+            }
+
+            return null;
+        },
+        extractImages
+    );
 
     const data = {
         title:
@@ -36,60 +72,39 @@ async function grabGeneralData() {
         width: packageWidth.value ?? "?",
         height: packageHeight.value ?? "?",
         description: description ?? "",
+        images: imagesArray,
         variants: variantData,
     };
-
-    console.log(data);
 
     return data;
 }
 
-/**
- * Extracts all data from an HTML table and returns it as an array of objects.
- * Each object represents a row, with keys as column headers and values as cell content.
- * @returns {Promise<object[]>} An array of objects representing the table data.
- */
-async function grabVariantData() {
-    // Click the variants tab to trigger potential loading
-    document.querySelector(".ant-tabs-nav-list").childNodes[1].click();
+browser.runtime.onMessage.addListener((request, sender) => {
+    if (request.action === "getProductData") {
+        const product = grabGeneralData();
+        return Promise.resolve(
+            product.then((productData) => {
+                return { success: true, data: productData };
+            })
+        );
+    }
+});
 
-    return new Promise((resolve, reject) => {
-        const checkInterval = 1000; // Check every 500ms
-        const timeout = 50000; // 10-second timeout
-        let elapsed = 0;
-
-        const checkIntervalId = setInterval(() => {
-            // Check if loading spinner exists
-            const loadingSpinner = document.querySelector(".ant-spin-spinning");
-
-            if (!loadingSpinner) {
-                clearInterval(checkIntervalId);
-                // Now that loading is complete, get the table data
-                const table = document.querySelector("table");
-
-                if (!table) {
-                    reject(new Error("Table not found after loading"));
-                    return;
-                }
-                resolve(extractTableData(table));
-            }
-
-            // Handle timeout
-            elapsed += checkInterval;
-            if (elapsed >= timeout) {
-                clearInterval(checkIntervalId);
-                reject(new Error("Timeout waiting for data to load"));
-            }
-        }, checkInterval);
-    });
+function zoomOut(scaleFactor = 0.6) {
+    document.body.style.transform = `scale(${scaleFactor})`;
+    document.body.style.transformOrigin = "0 0"; // Ensures scaling from the top-left
+    document.body.style.width = `${100 / scaleFactor}%`; // Adjust width to prevent clipping
 }
 
 /**
- * @returns {Promise<string>}
+ * @param {HTMLElement} tabNode
+ * @param {() => any} checkFunction
+ * @param {(T) => void} callback
+ * @returns {Promise<any>}
  */
-async function grabDescriptionData() {
+async function awaitLoadAndGrab(tabNode, checkFunction, callback) {
     // Click the variants tab to trigger potential loading
-    document.querySelector(".ant-tabs-nav-list").childNodes[2].click();
+    tabNode.click();
 
     return new Promise((resolve, reject) => {
         const checkInterval = 1000; // Check every 500ms
@@ -98,13 +113,12 @@ async function grabDescriptionData() {
 
         const checkIntervalId = setInterval(() => {
             // Check if loading spinner exists
-            const loadingSpinner = document.querySelector(".ant-spin-spinning");
-            const iFrame = document.querySelectorAll("iframe")[1];
+            const targetNode = checkFunction();
 
-            if (!loadingSpinner && iFrame) {
+            if (targetNode) {
                 clearInterval(checkIntervalId);
 
-                resolve(extractDescription(iFrame));
+                resolve(callback(targetNode));
             }
 
             // Handle timeout
@@ -170,18 +184,18 @@ function extractDescription(IFrameElement) {
     return "";
 }
 
-function zoomOut(scaleFactor = 0.6) {
-    document.body.style.transform = `scale(${scaleFactor})`;
-    document.body.style.transformOrigin = "0 0"; // Ensures scaling from the top-left
-    document.body.style.width = `${100 / scaleFactor}%`; // Adjust width to prevent clipping
-}
+/**
+ * @returns {string[] | null}
+ * @param {HTMLDivElement} imagesContainer
+ */
+function extractImages(imagesContainer) {
+    if (imagesContainer) {
+        const imagesArray = Array.from(
+            imagesContainer.querySelectorAll("img")
+        ).map((imgNode) => imgNode.src);
 
-browser.runtime.onMessage.addListener((request, sender) => {
-    if (request.action === "getProductData") {
-        return Promise.resolve(
-            clickButton().then((productData) => {
-                return { success: true, data: productData };
-            })
-        );
+        return imagesArray;
     }
-});
+
+    return null;
+}
