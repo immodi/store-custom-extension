@@ -23,15 +23,25 @@ async function grabGeneralData() {
     const variantData = await grabVariantData();
     const description = await grabDescriptionData();
 
-    return {
-        title: productTitle.textContent ?? productTitle.innerText,
-        weight: productWeight.value ?? productWeight.innerText,
+    const data = {
+        title:
+            productTitle.textContent ??
+            productTitle.innerText ??
+            productTitle.value,
+        weight:
+            productWeight.value ??
+            productWeight.innerText ??
+            productWeight.textContent,
         length: packageLength.value ?? "?",
         width: packageWidth.value ?? "?",
         height: packageHeight.value ?? "?",
-        description: description,
+        description: description ?? "",
         variants: variantData,
     };
+
+    console.log(data);
+
+    return data;
 }
 
 /**
@@ -41,7 +51,7 @@ async function grabGeneralData() {
  */
 async function grabVariantData() {
     // Click the variants tab to trigger potential loading
-    document.querySelector("#rc-tabs-0-tab-Variants").click();
+    document.querySelector(".ant-tabs-nav-list").childNodes[1].click();
 
     return new Promise((resolve, reject) => {
         const checkInterval = 1000; // Check every 500ms
@@ -79,7 +89,7 @@ async function grabVariantData() {
  */
 async function grabDescriptionData() {
     // Click the variants tab to trigger potential loading
-    document.querySelector("#rc-tabs-0-tab-Description").click();
+    document.querySelector(".ant-tabs-nav-list").childNodes[2].click();
 
     return new Promise((resolve, reject) => {
         const checkInterval = 1000; // Check every 500ms

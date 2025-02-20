@@ -56,9 +56,13 @@ export function createProductFromData(productData) {
                 qty: productData.variants
                     .map((variant) => Number(variant.StockonAliExpress) || 0)
                     .reduce((acc, stock) => acc + stock, 0),
-                group_id: (Math.random() * 10000).toFixed(0),
+                group_id: 1,
                 visibility: 1, // Assuming visible
                 images: productData.variants.map((variant) => variant.Product), // Extract images from variants
+                attributes: [
+                    { attribute_code: "color" },
+                    { attribute_code: "size" },
+                ],
             };
             const response = yield fetch(`https://${domain}/api/products`, {
                 method: "POST",
@@ -98,7 +102,9 @@ export function createAttribute(authCookie, attributeName, attributeCode, option
             sort_order: "0",
             type: "select",
             groups: ["1"],
-            options: options,
+            options: options.map((option) => {
+                return { option_text: option };
+            }),
         };
         try {
             const response = yield fetch(url, {
@@ -115,6 +121,66 @@ export function createAttribute(authCookie, attributeName, attributeCode, option
         catch (error) {
             console.error("Error:", error);
             return null;
+        }
+    });
+}
+export function createVariantGroup(attributeCode, cookieToken) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const url = `https://${domain}/api/variantGroups`;
+        const headers = {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+            Cookie: `asid=${cookieToken}`,
+        };
+        const body = JSON.stringify({
+            attribute_codes: [attributeCode],
+            attribute_group_id: 1,
+        });
+        try {
+            const response = yield fetch(url, {
+                method: "POST",
+                headers: headers,
+                body: body,
+            });
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            const vairantGroup = yield response.json();
+            return vairantGroup.data.uuid;
+        }
+        catch (error) {
+            console.error("Error creating variant group:", error);
+            return null;
+        }
+    });
+}
+export function addProductToVariantGroup(variantGroupId, cookieToken, productId) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const url = `https://${domain}/api/variantGroups/${variantGroupId}/items`;
+        const headers = {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+            Cookie: `asid=${cookieToken}`,
+        };
+        const body = JSON.stringify({
+            product_id: productId,
+        });
+        try {
+            const response = yield fetch(url, {
+                method: "POST",
+                headers: headers,
+                body: body,
+            });
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            const responseData = yield response.json();
+            const isProductAdded = !!responseData.data.id && responseData.data.id.trim() !== "";
+            return isProductAdded;
+        }
+        catch (error) {
+            console.error("Error adding product to variant group:", error);
+            return false;
         }
     });
 }

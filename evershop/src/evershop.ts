@@ -46,6 +46,7 @@ interface ProductRequest {
     group_id: string | number;
     visibility: 0 | 1;
     images: string[];
+    attributes: any[];
 }
 
 interface ProductResponse {
@@ -104,6 +105,48 @@ interface AttributeResponse {
     };
 }
 
+interface VariantGroupResponse {
+    data: {
+        variant_group_id: number;
+        uuid: string;
+        attribute_group_id: number;
+        attribute_one: number;
+        attribute_two: number;
+        attribute_three: number;
+        attribute_four: number;
+        attribute_five: number;
+    };
+}
+
+interface VariantGroupItemResponse {
+    data: {
+        id: string;
+        attributes: {
+            attribute_id: number;
+            attribute_code: string;
+            option_id: number;
+        }[];
+        product: {
+            product_id: number;
+            uuid: string;
+            variant_group_id: number;
+            visibility: number;
+            group_id: number;
+            image: string | null;
+            sku: string;
+            price: number;
+            qty: number;
+            weight: number;
+            manage_stock: number;
+            stock_availability: number;
+            tax_class: string | null;
+            status: number;
+            created_at: string;
+            updated_at: string;
+        };
+    };
+}
+
 export async function login(): Promise<string | null> {
     const email = "admin@admin.com";
     const password = "modimodi";
@@ -153,9 +196,13 @@ export async function createProductFromData(
             qty: productData.variants
                 .map((variant) => Number(variant.StockonAliExpress) || 0)
                 .reduce((acc, stock) => acc + stock, 0),
-            group_id: (Math.random() * 10000).toFixed(0),
+            group_id: 1,
             visibility: 1, // Assuming visible
             images: productData.variants.map((variant) => variant.Product), // Extract images from variants
+            attributes: [
+                { attribute_code: "color" },
+                { attribute_code: "size" },
+            ],
         };
 
         const response = await fetch(`https://${domain}/api/products`, {
@@ -184,7 +231,7 @@ export async function createAttribute(
     authCookie: string,
     attributeName: string,
     attributeCode: string,
-    options: { option_text: string }[]
+    options: string[]
 ): Promise<string | null> {
     const url = `https://${domain}/api/attributes`;
     const headers = {
@@ -201,7 +248,9 @@ export async function createAttribute(
         sort_order: "0",
         type: "select",
         groups: ["1"],
-        options: options,
+        options: options.map((option) => {
+            return { option_text: option };
+        }),
     };
 
     try {
@@ -221,5 +270,82 @@ export async function createAttribute(
     } catch (error) {
         console.error("Error:", error);
         return null;
+    }
+}
+
+export async function createVariantGroup(
+    attributeCode: string,
+    cookieToken: string
+): Promise<string | null> {
+    const url = `https://${domain}/api/variantGroups`;
+
+    const headers = {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        Cookie: `asid=${cookieToken}`,
+    };
+
+    const body = JSON.stringify({
+        attribute_codes: [attributeCode],
+        attribute_group_id: 1,
+    });
+
+    try {
+        const response = await fetch(url, {
+            method: "POST",
+            headers: headers,
+            body: body,
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+
+        const vairantGroup: VariantGroupResponse = await response.json();
+
+        return vairantGroup.data.uuid;
+    } catch (error) {
+        console.error("Error creating variant group:", error);
+        return null;
+    }
+}
+
+export async function addProductToVariantGroup(
+    variantGroupId: string,
+    cookieToken: string,
+    productId: string
+): Promise<boolean> {
+    const url = `https://${domain}/api/variantGroups/${variantGroupId}/items`;
+
+    const headers = {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        Cookie: `asid=${cookieToken}`,
+    };
+
+    const body = JSON.stringify({
+        product_id: productId,
+    });
+
+    try {
+        const response = await fetch(url, {
+            method: "POST",
+            headers: headers,
+            body: body,
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+
+        const responseData: VariantGroupItemResponse = await response.json();
+
+        const isProductAdded =
+            !!responseData.data.id && responseData.data.id.trim() !== "";
+
+        return isProductAdded;
+    } catch (error) {
+        console.error("Error adding product to variant group:", error);
+        return false;
     }
 }

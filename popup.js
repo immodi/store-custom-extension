@@ -3,22 +3,33 @@ document.getElementById("clickButton").addEventListener("click", async () => {
 
     try {
         const token = await getAdminToken();
-        // const productData = await getProductData();
-        // const data = {
-        //     token: token,
-        //     ...productData,
-        // };
-        // localStorage.setItem("productData", JSON.stringify(data));
-        // const creationRequest = await createProduct(data);
+        const productData = await getProductData();
+        const data = {
+            token: token,
+            ...productData,
+        };
 
-        const attributeUid = await createAttribute(token, "Test2", "test2", [
-            { option_text: "test2-1" },
-            { option_text: "test2-2" },
-        ]);
+        const attributeCode = await createAttribute(
+            token,
+            productData.title,
+            productData.title
+                .split(" ")
+                .map((word) => word.toLowerCase())
+                .join("-"),
+            productData.variants.map((variant) => variant.Color)
+        );
 
-        console.log(attributeUid);
+        const productResponse = await createProduct(data);
+        const variantGroupId = await createVariantGroup(attributeCode, token);
+        const wasProductAdded = await addProductToVariantGroup(
+            variantGroupId,
+            token,
+            productResponse.data.uuid
+        );
+
+        console.log("is it done?", wasProductAdded);
     } catch (error) {
-        console.log(error);
+        console.error(error);
     } finally {
         hideSpinner();
     }
@@ -54,7 +65,7 @@ async function getProductData() {
 
 /**
  * @param {object} product
- *  @returns {Promise<object | null>}
+ * @returns {Promise<object | null>}
  * */
 async function createProduct(product) {
     const creationRequest = await browser.runtime.sendMessage({
@@ -63,13 +74,20 @@ async function createProduct(product) {
     });
 
     if (creationRequest && creationRequest.success) {
-        const product = creationRequest.product;
+        const product = creationRequest.data.product;
         return product;
     } else {
         return null;
     }
 }
 
+/**
+ * @param {string} attributeCode
+ * @param {string} attributeName
+ * @param {string} authCookie
+ * @param {object} options
+ * @returns {Promise<string | null>}
+ * */
 async function createAttribute(
     authCookie,
     attributeName,
@@ -85,8 +103,53 @@ async function createAttribute(
     });
 
     if (creationRequest && creationRequest.success) {
-        const uuid = creationRequest.data.attributeUid;
-        return uuid;
+        return attributeCode;
+    } else {
+        return null;
+    }
+}
+
+/**
+ * @param {string} attributeCode
+ * @param {string} cookieToken
+ * @returns {Promise<string | null>}
+ * */
+async function createVariantGroup(attributeCode, cookieToken) {
+    const creationRequest = await browser.runtime.sendMessage({
+        action: "createVariantGroup",
+        attributeCode: attributeCode,
+        cookieToken: cookieToken,
+    });
+
+    if (creationRequest && creationRequest.success) {
+        const variantGroupUid = creationRequest.data.variantGroupUid;
+        return variantGroupUid;
+    } else {
+        return null;
+    }
+}
+
+/**
+ * @param {string} productId
+ * @param {string} cookieToken
+ * @param {string} variantGroupId
+ * @returns {Promise<boolean>}
+ * */
+async function addProductToVariantGroup(
+    variantGroupId,
+    cookieToken,
+    productId
+) {
+    const request = await browser.runtime.sendMessage({
+        action: "addProductToVariantGroup",
+        variantGroupId: variantGroupId,
+        cookieToken: cookieToken,
+        productId: productId,
+    });
+
+    if (request && request.success) {
+        const isAdded = request.success;
+        return isAdded;
     } else {
         return null;
     }

@@ -1,6 +1,8 @@
 import {
+    addProductToVariantGroup,
     createAttribute,
     createProductFromData,
+    createVariantGroup,
     login,
 } from "./evershop/evershop.js";
 
@@ -113,6 +115,67 @@ browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
             });
 
         return true; // Ensure the response is sent asynchronously
+    }
+
+    if (request.action === "createVariantGroup") {
+        const { attributeCode, cookieToken } = request;
+
+        if (!cookieToken && !attributeCode) {
+            sendResponse({ success: false, error: "No data provided" });
+            return true;
+        }
+
+        createVariantGroup(attributeCode, cookieToken)
+            .then((variantGroupUid) => {
+                if (variantGroupUid !== null) {
+                    sendResponse({
+                        success: true,
+                        data: {
+                            variantGroupUid: variantGroupUid,
+                        },
+                    });
+                } else {
+                    sendResponse({
+                        success: false,
+                        error: "Variant Group creation failed",
+                    });
+                }
+            })
+            .catch((error) => {
+                console.error("Error during variant group creation:", error);
+                sendResponse({ success: false, error: error.message });
+            });
+
+        return true;
+    }
+
+    if (request.action === "addProductToVariantGroup") {
+        const { variantGroupId, cookieToken, productId } = request;
+
+        if (!cookieToken && !variantGroupId && !productId) {
+            sendResponse({ success: false, error: "No data provided" });
+            return true;
+        }
+
+        addProductToVariantGroup(variantGroupId, cookieToken, productId)
+            .then((isAdded) => {
+                if (isAdded) {
+                    sendResponse({
+                        success: true,
+                    });
+                } else {
+                    sendResponse({
+                        success: false,
+                        error: "Variant Group creation failed",
+                    });
+                }
+            })
+            .catch((error) => {
+                console.error("Error during variant group creation:", error);
+                sendResponse({ success: false, error: error.message });
+            });
+
+        return true;
     }
 
     return true;
