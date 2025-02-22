@@ -9,7 +9,13 @@
             "strict_min_version": "57.0"
         }
     },
-    "permissions": ["activeTab", "storage"],
+    "permissions": [
+        "activeTab",
+        "storage",
+        "webRequest",
+        "webRequestBlocking",
+        "https://sahlstor.com/*"
+    ],
     "browser_action": {
         "default_popup": "popup.html"
     },

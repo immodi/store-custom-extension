@@ -6,6 +6,21 @@ import {
     login,
 } from "./evershop/evershop.js";
 
+browser.webRequest.onHeadersReceived.addListener(
+    function (details) {
+        return {
+            responseHeaders: details.responseHeaders.concat([
+                {
+                    name: "Access-Control-Allow-Origin",
+                    value: "*",
+                },
+            ]),
+        };
+    },
+    { urls: ["https://sahlstor.com/*"] },
+    ["blocking", "responseHeaders"]
+);
+
 // Event listener for handling messages
 browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === "login") {
