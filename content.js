@@ -158,9 +158,8 @@ function extractTableData(table) {
         const rowData = {};
 
         cells.forEach((cell, index) => {
-            // const header = headers[index];
-            const key =
-                index === 2 ? "Color" : headers[index].replaceAll(" ", "");
+            const header = headers[index];
+            const key = index === 2 ? "Color" : header.replaceAll(" ", "");
             rowData[key] = cell.textContent.trim();
         });
 

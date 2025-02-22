@@ -19,7 +19,12 @@ document.getElementById("clickButton").addEventListener("click", async () => {
             productData.variants.map((variant) => variant.Color)
         );
 
-        const variantsUids = await createVariants(attributeCode, data);
+        const optionIndexer = 81;
+        const variantsUids = await createVariants(
+            attributeCode,
+            data,
+            optionIndexer
+        );
 
         const variantGroupId = await createVariantGroup(attributeCode, token);
         variantsUids.forEach(async (variantsUid) => {
@@ -82,7 +87,7 @@ async function createProduct(product) {
  * @param {object} productObject
  * @returns {Promise<string[]>}
  */
-async function createVariants(attributeCode, productObject) {
+async function createVariants(attributeCode, productObject, optionIndexer) {
     const variants = productObject.variants.map((variant, index) => {
         return {
             ...productObject,
@@ -90,7 +95,7 @@ async function createVariants(attributeCode, productObject) {
             price: variant.TotalCost ?? 0,
             qty: variant.StockonAliExpress ?? 0,
             attr_code: attributeCode,
-            attr_value: (index + 73).toString(),
+            attr_value: (index + optionIndexer).toString(),
             visibility: index === 0 ? "1" : "0",
         };
     });
