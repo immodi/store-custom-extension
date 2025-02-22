@@ -281,7 +281,7 @@ export async function createAttribute(
         attribute_code: attributeCode,
         is_required: "0",
         display_on_frontend: "1",
-        is_filterable: "1",
+        is_filterable: "0",
         sort_order: "0",
         type: "select",
         groups: ["1"],
