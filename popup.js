@@ -35,7 +35,7 @@ document.getElementById("clickButton").addEventListener("click", async () => {
     } catch (error) {
         console.error(error);
     } finally {
-        hideSpinner();
+        done();
     }
 });
 
@@ -94,7 +94,7 @@ async function createVariants(attributeCode, productObject, optionIndexer) {
         return {
             ...productObject,
             sku: variant.Sku ?? "",
-            price: variant.TotalCost ?? 0,
+            price: variant.Price ?? 0,
             qty: variant.StockonAliExpress ?? 0,
             attr_code: attributeCode,
             attr_value: (index + optionIndexer).toString(),
@@ -232,11 +232,19 @@ async function setOptionIndexerValue(newValue) {
 }
 
 function hideSpinner() {
+    document.querySelector(".checkmark").style.display = "none";
     document.querySelector("#clickButton").style.display = "block";
     document.querySelector(".spinner").style.display = "none";
 }
 
 function showSpinner() {
+    document.querySelector(".checkmark").style.display = "none";
     document.querySelector("#clickButton").style.display = "none";
     document.querySelector(".spinner").style.display = "block";
+}
+
+function done() {
+    document.querySelector(".checkmark").style.display = "block";
+    document.querySelector("#clickButton").style.display = "none";
+    document.querySelector(".spinner").style.display = "none";
 }
