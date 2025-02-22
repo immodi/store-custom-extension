@@ -37,22 +37,23 @@
 
             /* Checkmark animation */
             .checkmark {
-                width: 50px;
-                height: 50px;
+                width: 60px;
+                height: 60px;
                 display: none;
                 border-radius: 50%;
-                border: 4px solid #2ecc71;
+                background-color: #2ecc71;
                 position: relative;
+                justify-content: center;
+                align-items: center;
                 animation: popIn 0.3s ease-out;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             }
 
             .checkmark::after {
                 content: "";
                 position: absolute;
-                left: 14px;
-                top: 22px;
-                width: 10px;
-                height: 20px;
+                width: 18px;
+                height: 32px;
                 border: solid white;
                 border-width: 0 4px 4px 0;
                 transform: rotate(45deg);
@@ -63,9 +64,12 @@
                     transform: scale(0);
                     opacity: 0;
                 }
+                80% {
+                    transform: scale(1.1);
+                    opacity: 1;
+                }
                 100% {
                     transform: scale(1);
-                    opacity: 1;
                 }
             }
         </style>
