@@ -19,7 +19,7 @@ document.getElementById("clickButton").addEventListener("click", async () => {
             productData.variants.map((variant) => variant.Color)
         );
 
-        const optionIndexer = 81;
+        const optionIndexer = await getOptionIndexerValue();
         const variantsUids = await createVariants(
             attributeCode,
             data,
@@ -30,6 +30,8 @@ document.getElementById("clickButton").addEventListener("click", async () => {
         variantsUids.forEach(async (variantsUid) => {
             await addProductToVariantGroup(variantGroupId, token, variantsUid);
         });
+
+        await setOptionIndexerValue(variantsUids.length + optionIndexer);
     } catch (error) {
         console.error(error);
     } finally {
@@ -183,6 +185,49 @@ async function addProductToVariantGroup(
         return isAdded;
     } else {
         return null;
+    }
+}
+
+/**
+ * Fetches the current value from the server.
+ * @returns {Promise<number>} The current value.
+ */
+async function getOptionIndexerValue() {
+    try {
+        const response = await fetch("https://extension.sahlstor.com/value");
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        const data = await response.json();
+        return data.value;
+    } catch (error) {
+        console.error("Error fetching value:", error);
+        return null;
+    }
+}
+
+/**
+ * Sends a new value to the server to update it.
+ * @param {number} newValue - The new value to set.
+ * @returns {Promise<boolean>} True if successful, false otherwise.
+ */
+async function setOptionIndexerValue(newValue) {
+    try {
+        const response = await fetch("https://extension.sahlstor.com/value", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ value: newValue }),
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        return true;
+    } catch (error) {
+        console.error("Error setting value:", error);
+        return false;
     }
 }
 
